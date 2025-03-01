@@ -5,6 +5,7 @@ from db import db
 from schemas import StudentSchema, AssignmentSchema, BlocklistSchema
 from models import StudentModel, AssignmentModel, BlocklistModel
 from flask_jwt_extended import jwt_required
+from models.assignment import AssignmentStatus
 
 
 blp = Blueprint("assignments", __name__, description="Operations on assignments")
@@ -28,12 +29,6 @@ class Assignments(MethodView):
             abort(500, message="An error occurred while adding assignment.")
 
         return assignment, 201
-
-    @jwt_required()
-    @blp.response(200, AssignmentSchema(many=True))
-    def get(self, student_id):
-        student = StudentModel.query.get_or_404(student_id)
-        return student.assignments.all()
     
 
 @blp.route('/students/<int:student_id>/assignments/<int:assignment_id>')
@@ -84,3 +79,19 @@ class Assignment(MethodView):
             abort(500, message="An error occurred while deleting assignment")
             
         return None, 204
+    
+
+@blp.route('/students/<int:student_id>/assignments/<int:assignment_id>/submit')
+class AssignmentSubmission(MethodView):
+    @jwt_required()
+    @blp.response(200, AssignmentSchema)
+    def post(self, student_id, assignment_id):
+        assignment = AssignmentModel.query.filter(
+            AssignmentModel.student_id == student_id,
+            AssignmentModel.id == assignment_id
+        ).first_or_404()
+
+        assignment.status = AssignmentStatus.COMPLETED
+        db.session.commit()
+
+        return assignment

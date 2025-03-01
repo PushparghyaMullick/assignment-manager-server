@@ -28,7 +28,7 @@ class StudentSignUp(MethodView):
             abort(500, message="An error occurred while registering user.")
 
         access_token = create_access_token(identity=str(student.id))
-        return {"access_token": access_token}, 201
+        return {"student_id": student.id, "access_token": access_token}, 201
     
 
 @blp.route('/login')
@@ -41,9 +41,18 @@ class StudentLogin(MethodView):
 
         if student and pbkdf2_sha256.verify(student_data["password"], student.password):
             access_token = create_access_token(identity=str(student.id))
-            return {"access_token": access_token}, 200
+            return {"student_id": student.id, "access_token": access_token}, 200
         
         abort(401, message="Invalid credentials.")
+
+
+@blp.route('/students/<int:student_id>')
+class Student(MethodView):
+    @jwt_required()
+    @blp.response(200, StudentSchema)
+    def get(self, student_id):
+        student = StudentModel.query.get_or_404(student_id)
+        return student, 200
 
 
 @blp.route('/logout')
@@ -61,3 +70,11 @@ class StudentLogout(MethodView):
             abort(500, message="An error occurred while logging out.")
 
         return blocked_token, 200
+    
+
+@blp.route('/check-auth')
+class CheckAuth(MethodView):
+    @jwt_required()
+    @blp.response(200)
+    def get(self):
+        return "Authorized", 200
